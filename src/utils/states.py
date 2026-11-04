@@ -1,6 +1,6 @@
 from typing_extensions import TypedDict, NotRequired
 from typing import Optional
-from objects import Analyst
+from src.utils.objects import Analyst
 
 class GenerateAnalystState(TypedDict):
     topic: str #Research topic for which the analyst is being generated

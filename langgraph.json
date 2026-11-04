@@ -1,0 +1,7 @@
+{
+    "dependencies":["."],
+    "graphs": {
+        "create_analyst": "./src/creatingAnalysts.py:graph"
+    },
+    "env": ".env"
+}
