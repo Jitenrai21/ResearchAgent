@@ -1,0 +1,8 @@
+colorama
+dotenv
+langchain
+langchain-community
+langchain-groq
+langchain-tavily
+langgraph
+langgraph-cli[inemem,inmem]
