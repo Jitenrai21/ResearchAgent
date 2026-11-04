@@ -14,8 +14,8 @@ def create_analysts(state: GenerateAnalystState):
     max_analysts = state["max_analysts"]
     human_analyst_feedback = state.get("human_analyst_feedback", "")
 
-    #Enforce structured output
-    structured_llm = llm.with_structured_output(Perspectives)
+    #Enforce structured output via JSON schema (avoids Groq tool-call param validation)
+    structured_llm = llm.with_structured_output(Perspectives, method="json_schema")
 
     # System Message
     system_message = analyst_instructions.format(topic=topic, human_analyst_feedback=human_analyst_feedback, max_analysts=max_analysts)
