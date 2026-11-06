@@ -220,7 +220,7 @@ def write_conclusion(state: ResearchGraphState):
     return {"conclusion": conclusion.content}
 
 def finalize_report(state: ResearchGraphState):
-    """This is the "reduce step where we gather all the sections, combine them and reflect on them to write the interview's final report."""
+    """This is the "reduce" step where we gather all the sections, combine them and reflect on them to write the interview's final report."""
     # Saving full final report
     content = state["content"]
     if content.startswith("## Insights"):
