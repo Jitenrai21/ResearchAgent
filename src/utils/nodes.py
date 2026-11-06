@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
-from src.utils.states import GenerateAnalystState, InterviewState
+from src.utils.states import GenerateAnalystState, InterviewState, ResearchGraphState
 from src.utils.models import llm
 from src.utils.objects import Analyst, Perspectives, SearchQuery
-from src.utils.prompts import analyst_instructions, question_instructions, search_instruction, answer_instructions, section_writer_instructions
+from src.utils.prompts import analyst_instructions, question_instructions, search_instruction, answer_instructions, section_writer_instructions, intro_conclusion_instructions, report_writer_instructions
 from langchain.messages import SystemMessage, HumanMessage
 from langgraph.types import interrupt
 from langchain_tavily import TavilySearch
@@ -19,7 +19,7 @@ def create_analysts(state: GenerateAnalystState):
     human_analyst_feedback = state.get("human_analyst_feedback", "")
 
     #Enforce structured output via JSON schema (avoids Groq tool-call param validation)
-    structured_llm = llm.with_structured_output(Perspectives, method="json_schema")
+    structured_llm = llm.with_structured_output(Perspectives, method="json_schema", strict=True)
 
     # System Message
     system_message = analyst_instructions.format(topic=topic, human_analyst_feedback=human_analyst_feedback, max_analysts=max_analysts)
@@ -78,11 +78,11 @@ def search_web(state: InterviewState):
     """Retrieve docs from the web"""
 
     #search query
-    structured_llm = llm.with_structured_output(SearchQuery, method="json_schema")
+    structured_llm = llm.with_structured_output(SearchQuery, method="json_schema", strict=True)
 
     #search instruction
     search_instruction_sys_message = SystemMessage(content=search_instruction)
-    tavily_search = TavilySearch(max_results=3)
+    tavily_search = TavilySearch(max_results=2)
 
     search_query = structured_llm.invoke(
         [search_instruction_sys_message]
@@ -108,7 +108,7 @@ def search_web2(state: InterviewState):
     """Retrieve docs from the web"""
 
     #search query
-    structured_llm = llm.with_structured_output(SearchQuery, method="json_schema")
+    structured_llm = llm.with_structured_output(SearchQuery, method="json_schema", strict=True)
 
     #search instruction
     search_instruction_sys_message = SystemMessage(content=search_instruction)
@@ -179,3 +179,61 @@ def write_section(state: InterviewState):
                          [HumanMessage(content=f"Use this source to write your section: {context}")])
     
     return {"sections": [section.content]}
+
+def write_report(state: ResearchGraphState):
+    # Full set of sections
+    sections = state["sections"]
+    topic = state["topic"]
+
+    # Concating all sections together
+    formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
+
+    # summarizing into final report
+    sys_message = report_writer_instructions.format(topic=topic, context=formatted_str_sections)
+    report = llm.invoke([SystemMessage(content=sys_message)]+[HumanMessage(content=f"Write a report based upon these memos.")])
+    return {"content": report.content}
+
+def write_introduction(state: ResearchGraphState):
+    # Full set of sections
+    sections = state["sections"]
+    topic = state["topic"]
+
+    # Concating all sections together
+    formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
+
+    # Summarizing into final report
+    instructions = intro_conclusion_instructions.format(topic=topic, formatted_str_sections=formatted_str_sections)
+    intro = llm.invoke([instructions]+[HumanMessage(content=f"Write the report introduction.")])
+    return {"introduction": intro.content}
+
+def write_conclusion(state: ResearchGraphState):
+        # Full set of sections
+    sections = state["sections"]
+    topic = state["topic"]
+
+    # Concating all sections together
+    formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
+
+    # Summarizing into final report
+    instructions = intro_conclusion_instructions.format(topic=topic, formatted_str_sections=formatted_str_sections)
+    conclusion = llm.invoke([instructions]+[HumanMessage(content=f"Write the report conclusion.")])
+    return {"conclusion": conclusion.content}
+
+def finalize_report(state: ResearchGraphState):
+    """This is the "reduce step where we gather all the sections, combine them and reflect on them to write the interview's final report."""
+    # Saving full final report
+    content = state["content"]
+    if content.startswith("## Insights"):
+        content = content.strip("## Insights")
+    if '## Sources' in content:
+        try:
+            content, sources = content.split("\n## Sources\n")
+        except:
+            sources = None
+    else:
+        sources = None
+
+    final_report = state['introduction'] + "\n\n---\n\n" + content + "\n\n---\n\n" + state['conclusion']
+    if sources is not None:
+        final_report += "\n\n## Sources\n" + sources
+    return {"final_report": final_report}

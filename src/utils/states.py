@@ -1,5 +1,5 @@
 from typing_extensions import TypedDict, NotRequired, Annotated
-from typing import Optional
+from typing import Optional, List
 from src.utils.objects import Analyst
 from langgraph.graph import MessagesState
 import operator
@@ -16,3 +16,14 @@ class InterviewState(MessagesState):
     analyst: Analyst # my analyst   
     interview: str # interview transcript
     sections: list # final key we duplicate in outer state for Send() api
+
+class ResearchGraphState(TypedDict):
+    topic: str # Research Topic
+    max_analysts: int # number of analysts
+    human_analyst_feedback: NotRequired[Optional[str]]
+    analysts: List[Analyst] # Analysts asking questions
+    sections: Annotated[list, operator.add] # Send() API key
+    introduction: str # Introduction for the final report
+    content: str # Content for the final report
+    conclusion: str # Conclusion for the final report
+    final_report: str # Final Report
